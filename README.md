@@ -12,10 +12,15 @@ The dashboard is now a companion interface for the **Local Business Scraper** yo
 - Demo generator for testing the UI
 
 ### Workflow
-1. Run Local Business Scraper on your machine (keyword + “must not have a website” + Belgian postcodes)
-2. Export the CSV
-3. Open this PWA and drop the CSV in
-4. Filter and re-export a clean list
+1. Open a terminal and go to your scraper folder:
+   ```powershell
+   cd C:\local-business-scraper
+   pythonw MapsScraper.pyw
+   ```
+2. In the GUI: set keyword + “must not have a website” + Belgian postcodes
+3. Export the CSV
+4. Open this PWA and drop the CSV in
+5. Filter and re-export a clean list
 
 The actual scraping cannot run inside the browser for security and ToS reasons — it stays on your computer. This PWA is the polished front-end for reviewing and exporting the results.
 
