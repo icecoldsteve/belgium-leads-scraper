@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Belgium Leads Dashboard</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0f172a" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; }
+    .glass { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
+    .tab-active { background: #3b82f6; color: white; }
+    .tab-inactive { background: #1e293b; color: #94a3b8; }
+    .dropzone { border: 2px dashed #475569; transition: all 0.2s; }
+    .dropzone.dragover { border-color: #3b82f6; background: rgba(59,130,246,0.1); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto p-4 md:p-6">
+    <header class="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h1 class="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Belgium Leads Dashboard</h1>
+        <p class="text-slate-400 text-sm mt-1">No-website businesses · Postal codes · Local Business Scraper companion</p>
+      </div>
+      <div class="flex gap-2">
+        <button id="tabConfig" class="tab-active px-4 py-2 rounded-lg text-sm font-medium">Configure</button>
+        <button id="tabResults" class="tab-inactive px-4 py-2 rounded-lg text-sm font-medium">Results <span id="badgeCount" class="ml-1 bg-cyan-500 text-black text-xs px-1.5 rounded-full hidden">0</span></button>
+      </div>
+    </header>
+    <div id="configPanel" class="space-y-5">
+      <div class="glass rounded-2xl p-5 border-l-4 border-emerald-500">
+        <div class="flex items-start gap-3">
+          <div class="text-2xl">💻</div>
+          <div>
+            <h2 class="font-semibold text-emerald-400">Local Business Scraper is your engine</h2>
+            <p class="text-sm text-slate-300 mt-1">The actual scraping runs on your computer (Chromium + Playwright). This dashboard is the clean interface to review, filter, and export the results.</p>
+            <ol class="text-sm text-slate-400 mt-3 space-y-1 list-decimal list-inside">
+              <li>Open the Local Business Scraper GUI on your machine</li>
+              <li>Set keyword + “must not have a website” + Belgian postcodes</li>
+              <li>Export the CSV</li>
+              <li>Drop the CSV here to review and export cleanly</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <h3 class="font-medium mb-3">Upload scraper CSV</h3>
+        <div id="dropzone" class="dropzone rounded-xl p-8 text-center cursor-pointer">
+          <p class="text-slate-300">Drag & drop your Local Business Scraper CSV here</p>
+          <p class="text-xs text-slate-500 mt-1">or click to browse</p>
+          <input type="file" id="csvFile" accept=".csv,.xlsx,.xls" class="hidden" />
+        </div>
+        <p id="uploadStatus" class="text-sm text-slate-400 mt-3"></p>
+      </div>
+      <div class="glass rounded-2xl p-6">
+        <h3 class="font-medium mb-3">Or generate a demo list (for testing the UI)</h3>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Postal code or city</label>
+            <input id="locationInput" list="postalList" placeholder="1000, Brussels, Antwerpen..." class="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+            <datalist id="postalList"></datalist>
+          </div>
+          <div>
+            <label class="block text-sm text-slate-400 mb-1">Categories</label>
+            <div class="flex flex-wrap gap-2">
+              <label class="flex items-center gap-1.5 bg-slate-800 px-3 py-2 rounded-lg text-sm"><input type="checkbox" class="cat" value="restaurant" checked> Restaurant</label>
+              <label class="flex items-center gap-1.5 bg-slate-800 px-3 py-2 rounded-lg text-sm"><input type="checkbox" class="cat" value="café" checked> Café</label>
+              <label class="flex items-center gap-1.5 bg-slate-800 px-3 py-2 rounded-lg text-sm"><input type="checkbox" class="cat" value="shop" checked> Shop</label>
+            </div>
+          </div>
+        </div>
+        <button id="demoBtn" class="mt-4 w-full bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 rounded-xl transition">Generate demo leads (no website bias)</button>
+      </div>
+    </div>
+    <div id="resultsPanel" class="hidden space-y-4">
+      <div class="glass rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap gap-2 items-center">
+          <input id="searchFilter" placeholder="Filter by name or address..." class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm w-64" />
+          <select id="websiteFilter" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm">
+            <option value="all">All websites</option>
+            <option value="none">No website</option>
+            <option value="social">Social only</option>
+            <option value="has">Has website</option>
+          </select>
+        </div>
+        <div class="flex gap-2">
+          <button id="exportCsv" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-medium">CSV</button>
+          <button id="exportExcel" class="bg-green-600 hover:bg-green-500 px-4 py-2 rounded-lg text-sm font-medium">Excel</button>
+          <button id="exportJson" class="bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded-lg text-sm font-medium">JSON</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto glass rounded-xl">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-800 text-slate-300">
+            <tr>
+              <th class="p-3 text-left">Name</th>
+              <th class="p-3 text-left">Category</th>
+              <th class="p-3 text-left">Address</th>
+              <th class="p-3 text-left">Phone</th>
+              <th class="p-3 text-left">Website</th>
+              <th class="p-3 text-left">Type</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody" class="divide-y divide-slate-700"></tbody>
+        </table>
+      </div>
+      <p id="resultsEmpty" class="text-center text-slate-500 py-12 hidden">No results yet. Upload a CSV or generate a demo.</p>
+    </div>
+    <footer class="mt-10 text-center text-xs text-slate-500">Companion dashboard for Local Business Scraper · Belgian postal codes · Export-ready</footer>
+  </div>
+  <script>
+    const postalCodes = [
+      {code:"1000", city:"Brussels"}, {code:"2000", city:"Antwerpen"}, {code:"3000", city:"Leuven"},
+      {code:"4000", city:"Liège"}, {code:"5000", city:"Namur"}, {code:"6000", city:"Charleroi"},
+      {code:"7000", city:"Mons"}, {code:"8000", city:"Brugge"}, {code:"9000", city:"Gent"}
+    ];
+    const datalist = document.getElementById('postalList');
+    postalCodes.forEach(p => {
+      const o1 = document.createElement('option'); o1.value = p.code + ' ' + p.city; datalist.appendChild(o1);
+      const o2 = document.createElement('option'); o2.value = p.code; datalist.appendChild(o2);
+    });
+    let allResults = [];
+    let filteredResults = [];
+    document.getElementById('tabConfig').onclick = () => switchTab('config');
+    document.getElementById('tabResults').onclick = () => switchTab('results');
+    function switchTab(tab) {
+      document.getElementById('configPanel').classList.toggle('hidden', tab !== 'config');
+      document.getElementById('resultsPanel').classList.toggle('hidden', tab !== 'results');
+      document.getElementById('tabConfig').className = tab === 'config' ? 'tab-active px-4 py-2 rounded-lg text-sm font-medium' : 'tab-inactive px-4 py-2 rounded-lg text-sm font-medium';
+      document.getElementById('tabResults').className = tab === 'results' ? 'tab-active px-4 py-2 rounded-lg text-sm font-medium' : 'tab-inactive px-4 py-2 rounded-lg text-sm font-medium';
+    }
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('csvFile');
+    dropzone.onclick = () => fileInput.click();
+    dropzone.ondragover = (e) => { e.preventDefault(); dropzone.classList.add('dragover'); };
+    dropzone.ondragleave = () => dropzone.classList.remove('dragover');
+    dropzone.ondrop = (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    };
+    fileInput.onchange = () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); };
+    function handleFile(file) {
+      const status = document.getElementById('uploadStatus');
+      status.textContent = 'Reading ' + file.name + '…';
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          if (file.name.endsWith('.csv')) {
+            parseCSV(e.target.result);
+          } else {
+            const wb = XLSX.read(e.target.result, { type: 'binary' });
+            const sheet = wb.Sheets[wb.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet);
+            loadResults(normalizeRows(json));
+          }
+          status.textContent = 'Loaded ' + allResults.length + ' rows from ' + file.name;
+          switchTab('results');
+        } catch (err) {
+          status.textContent = 'Could not parse file: ' + err.message;
+        }
+      };
+      if (file.name.endsWith('.csv')) reader.readAsText(file);
+      else reader.readAsBinaryString(file);
+    }
+    function parseCSV(text) {
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      if (!lines.length) return;
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
+      const rows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].match(/(".*?"|[^,"]+)(?=\s*,|\s*$)/g) || [];
+        const obj = {};
+        headers.forEach((h, idx) => { obj[h] = (cols[idx] || '').replace(/^"|"$/g, '').trim(); });
+        rows.push(obj);
+      }
+      loadResults(normalizeRows(rows));
+    }
+    function normalizeRows(rows) {
+      return rows.map(r => {
+        const website = r.website || r.Website || r.site || '';
+        const isSocial = /facebook|instagram|twitter|tiktok|linkedin/i.test(website);
+        return {
+          name: r.name || r.Name || r.title || r.business || '—',
+          category: r.category || r.Category || r.type || '—',
+          address: r.address || r.Address || r.full_address || '—',
+          phone: r.phone || r.Phone || r.telephone || '',
+          website: website,
+          website_type: r.website_type || r.websiteType || (website ? (isSocial ? 'Social' : 'Website') : 'No website'),
+          source: r.source || r.Source || 'LocalBusinessScraper'
+        };
+      });
+    }
+    function loadResults(rows) {
+      allResults = rows;
+      applyFilters();
+      document.getElementById('badgeCount').textContent = allResults.length;
+      document.getElementById('badgeCount').classList.remove('hidden');
+    }
+    function applyFilters() {
+      const q = (document.getElementById('searchFilter')?.value || '').toLowerCase();
+      const wf = document.getElementById('websiteFilter')?.value || 'all';
+      filteredResults = allResults.filter(r => {
+        const matchQ = !q || (r.name + r.address).toLowerCase().includes(q);
+        let matchW = true;
+        if (wf === 'none') matchW = !r.website || r.website_type === 'No website';
+        else if (wf === 'social') matchW = /social/i.test(r.website_type) || /facebook|instagram/i.test(r.website);
+        else if (wf === 'has') matchW = !!r.website && !/social/i.test(r.website_type);
+        return matchQ && matchW;
+      });
+      renderResults();
+    }
+    function renderResults() {
+      const tbody = document.getElementById('resultsBody');
+      const empty = document.getElementById('resultsEmpty');
+      tbody.innerHTML = '';
+      if (!filteredResults.length) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+      filteredResults.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-800/40';
+        const webCell = r.website
+          ? '<a href="' + r.website + '" target="_blank" class="text-cyan-400 underline truncate max-w-[140px] inline-block">' + r.website.replace(/^https?:\/\//,'') + '</a>'
+          : '<span class="text-amber-400">No website</span>';
+        tr.innerHTML = '<td class="p-3 font-medium">' + escapeHtml(r.name) + '</td><td class="p-3">' + escapeHtml(r.category) + '</td><td class="p-3 text-slate-300">' + escapeHtml(r.address) + '</td><td class="p-3">' + escapeHtml(r.phone || '—') + '</td><td class="p-3">' + webCell + '</td><td class="p-3 text-xs">' + escapeHtml(r.website_type || '—') + '</td>';
+        tbody.appendChild(tr);
+      });
+    }
+    function escapeHtml(s) {
+      return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+    document.getElementById('searchFilter')?.addEventListener('input', applyFilters);
+    document.getElementById('websiteFilter')?.addEventListener('change', applyFilters);
+    document.getElementById('demoBtn').onclick = () => {
+      const loc = document.getElementById('locationInput').value.trim() || '1000 Brussels';
+      const cats = [...document.querySelectorAll('.cat:checked')].map(c => c.value);
+      const demo = generateDemo(loc, cats);
+      loadResults(demo);
+      switchTab('results');
+    };
+    function generateDemo(location, categories) {
+      const names = {
+        restaurant: ["La Belle Vue", "Chez Marie", "Bistro Central", "Frituur", "Brasserie"],
+        café: ["Café de la Place", "Koffiehuis", "Espresso Bar", "Terrace Café"],
+        shop: ["Mode Boutique", "Local Market", "Gift Shop", "Droguerie"]
+      };
+      const streets = ["Rue de la Loi", "Meir", "Veldstraat", "Grand Place", "Kerkstraat"];
+      const out = [];
+      for (let i = 0; i < 18; i++) {
+        const cat = categories[Math.floor(Math.random()*categories.length)] || 'restaurant';
+        const name = (names[cat] || names.restaurant)[Math.floor(Math.random()*5)] + (Math.random()>0.6 ? ' ' + (Math.floor(Math.random()*15)+1) : '');
+        const hasWeb = Math.random() < 0.2;
+        const social = !hasWeb && Math.random() < 0.4;
+        out.push({
+          name,
+          category: cat.charAt(0).toUpperCase() + cat.slice(1),
+          address: streets[Math.floor(Math.random()*streets.length)] + ' ' + (Math.floor(Math.random()*120)+1) + ', ' + location,
+          phone: Math.random()>0.3 ? '+32 ' + (Math.floor(Math.random()*9)+1) + (Math.floor(Math.random()*900)+100) + ' ' + (Math.floor(Math.random()*90)+10) + ' ' + (Math.floor(Math.random()*90)+10) : '',
+          website: hasWeb ? 'https://www.' + name.toLowerCase().replace(/\s/g,'') + '.be' : (social ? 'https://facebook.com/' + name.toLowerCase().replace(/\s/g,'') : ''),
+          website_type: hasWeb ? 'Website' : (social ? 'Social' : 'No website'),
+          source: 'Demo'
+        });
+      }
+      return out.filter(r => r.website_type !== 'Website' || Math.random() < 0.3);
+    }
+    function download(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    document.getElementById('exportCsv').onclick = () => {
+      if (!filteredResults.length) return;
+      const headers = ['Name','Category','Address','Phone','Website','Website Type','Source'];
+      const rows = filteredResults.map(r => [r.name, r.category, r.address, r.phone, r.website, r.website_type, r.source]);
+      const csv = [headers, ...rows].map(row => row.map(c => '"' + String(c||'').replace(/"/g,'""') + '"').join(',')).join('\n');
+      download('belgium-leads-' + Date.now() + '.csv', csv, 'text/csv');
+    };
+    document.getElementById('exportExcel').onclick = () => {
+      if (!filteredResults.length || typeof XLSX === 'undefined') return;
+      const ws = XLSX.utils.json_to_sheet(filteredResults);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+      XLSX.writeFile(wb, 'belgium-leads-' + Date.now() + '.xlsx');
+    };
+    document.getElementById('exportJson').onclick = () => {
+      if (!filteredResults.length) return;
+      download('belgium-leads-' + Date.now() + '.json', JSON.stringify(filteredResults, null, 2), 'application/json');
+    };
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
